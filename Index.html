@@ -1,0 +1,1690 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#050810">
+<title>MBUX · Навигация</title>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@200;300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --bg-deep:#050810;
+  --bg-deep-2:#0a1020;
+  --panel:rgba(10,16,30,0.72);
+  --panel-strong:rgba(8,12,24,0.92);
+  --stroke:rgba(255,255,255,0.08);
+  --stroke-strong:rgba(0,210,223,0.35);
+  --cyan:#00D2DF;
+  --cyan-2:#5BE6EE;
+  --cyan-soft:rgba(0,210,223,0.18);
+  --white:#ffffff;
+  --text-2:#8B95A7;
+  --text-3:#5A6577;
+  --amber:#FFB300;
+  --red:#FF3B30;
+  --ring:128px;
+}
+
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{
+  height:100%;width:100%;overflow:hidden;
+  background:var(--bg-deep);
+  font-family:'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-weight:500;color:var(--white);
+  letter-spacing:-0.01em;user-select:none;-webkit-user-select:none;
+}
+
+#map{position:fixed;inset:0;background:var(--bg-deep);}
+.maplibregl-control-container{display:none;}
+#map::after{
+  content:"";position:fixed;inset:0;pointer-events:none;z-index:1;
+  background:
+    radial-gradient(120% 80% at 50% 0%, transparent 50%, rgba(0,0,0,0.55) 100%),
+    radial-gradient(120% 80% at 50% 100%, transparent 55%, rgba(0,0,0,0.65) 100%);
+}
+.ambient{
+  position:fixed;pointer-events:none;z-index:2;
+  inset:auto 0 -20% 0;height:60%;
+  background:radial-gradient(60% 60% at 50% 100%, rgba(0,210,223,0.10), transparent 70%);
+}
+
+/* TOP BAR */
+.top-bar{position:fixed;top:14px;left:14px;right:14px;z-index:10;display:flex;align-items:center;gap:12px;}
+.search{
+  flex:1;height:54px;
+  background:var(--panel);
+  backdrop-filter:blur(20px) saturate(150%);
+  -webkit-backdrop-filter:blur(20px) saturate(150%);
+  border:1px solid var(--stroke);
+  border-radius:18px;
+  display:flex;align-items:center;padding:0 18px;gap:14px;
+  box-shadow:0 8px 32px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.04);
+  transition:border-color .25s ease, box-shadow .25s ease;
+}
+.search:focus-within{
+  border-color:var(--stroke-strong);
+  box-shadow:0 8px 32px rgba(0,0,0,0.45), 0 0 0 4px var(--cyan-soft), inset 0 1px 0 rgba(255,255,255,0.04);
+}
+.search svg{width:20px;height:20px;color:var(--cyan);flex-shrink:0;}
+.search input{flex:1;background:transparent;border:none;outline:none;color:var(--white);font:500 17px/1 'Manrope';letter-spacing:-0.01em;}
+.search input::placeholder{color:var(--text-2);font-weight:400;}
+
+.chip-btn{
+  height:54px;min-width:54px;padding:0 14px;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  background:var(--panel);
+  backdrop-filter:blur(20px) saturate(150%);
+  -webkit-backdrop-filter:blur(20px) saturate(150%);
+  border:1px solid var(--stroke);
+  border-radius:18px;color:var(--white);cursor:pointer;
+  box-shadow:0 8px 32px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.04);
+  transition:transform .15s ease, border-color .2s;
+}
+.chip-btn:active{transform:scale(0.96);}
+.chip-btn.on{border-color:var(--stroke-strong);color:var(--cyan);}
+.chip-btn svg{width:22px;height:22px;}
+
+.status-cluster{display:flex;align-items:center;gap:10px;height:54px;padding:0 18px;background:var(--panel);backdrop-filter:blur(20px) saturate(150%);-webkit-backdrop-filter:blur(20px) saturate(150%);border:1px solid var(--stroke);border-radius:18px;box-shadow:0 8px 32px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.04);}
+.status-time{font:600 18px/1 'Manrope';letter-spacing:-0.02em;font-variant-numeric:tabular-nums;}
+.status-bars{display:flex;gap:2px;align-items:flex-end;}
+.status-bars i{width:3px;background:var(--cyan);border-radius:1px;display:block;}
+.status-bars i:nth-child(1){height:5px;}
+.status-bars i:nth-child(2){height:8px;}
+.status-bars i:nth-child(3){height:11px;}
+.status-bars i:nth-child(4){height:14px;opacity:.35;}
+
+/* LEFT RAIL */
+.left-rail{position:fixed;left:14px;top:50%;transform:translateY(-50%);z-index:10;display:flex;flex-direction:column;gap:10px;background:var(--panel);backdrop-filter:blur(20px) saturate(150%);-webkit-backdrop-filter:blur(20px) saturate(150%);border:1px solid var(--stroke);border-radius:22px;padding:8px;box-shadow:0 8px 32px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.04);}
+.rail-btn{width:48px;height:48px;border:none;border-radius:14px;background:transparent;color:var(--white);display:grid;place-items:center;cursor:pointer;transition:background .2s ease, color .2s ease, transform .15s ease;}
+.rail-btn:hover{background:rgba(255,255,255,0.05);}
+.rail-btn:active{transform:scale(0.94);}
+.rail-btn.active{background:var(--cyan-soft);color:var(--cyan);}
+.rail-btn svg{width:22px;height:22px;}
+.rail-divider{height:1px;background:var(--stroke);margin:2px 8px;}
+
+/* SPEED + LIMIT */
+.speed-cluster{position:fixed;left:14px;bottom:18px;z-index:10;display:flex;align-items:flex-end;gap:14px;}
+.speed-ring{width:var(--ring);height:var(--ring);position:relative;display:grid;place-items:center;}
+.speed-ring svg{position:absolute;inset:0;width:100%;height:100%;transform:rotate(-90deg);}
+.speed-ring .track{fill:none;stroke:rgba(255,255,255,0.06);stroke-width:3;}
+.speed-ring .fill{
+  fill:none;stroke:url(#speedGrad);stroke-width:3;stroke-linecap:round;
+  stroke-dasharray:340;stroke-dashoffset:340;
+  transition:stroke-dashoffset .4s cubic-bezier(.2,.8,.2,1);
+  filter:drop-shadow(0 0 6px rgba(0,210,223,0.6));
+}
+.speed-inner{width:calc(var(--ring) - 20px);height:calc(var(--ring) - 20px);border-radius:50%;background:radial-gradient(circle at 50% 30%, rgba(0,210,223,0.10), rgba(8,12,24,0.95) 70%);border:1px solid var(--stroke);display:flex;flex-direction:column;align-items:center;justify-content:center;box-shadow:inset 0 0 24px rgba(0,210,223,0.06);}
+.speed-val{font:300 44px/1 'Manrope';letter-spacing:-0.04em;font-variant-numeric:tabular-nums;color:var(--white);text-shadow:0 0 18px rgba(0,210,223,0.4);}
+.speed-unit{font:500 10px/1 'Manrope';letter-spacing:0.18em;color:var(--text-2);margin-top:6px;text-transform:uppercase;}
+
+.speed-limit{width:72px;height:72px;border-radius:50%;background:#fff;color:#000;display:grid;place-items:center;font:800 28px/1 'Manrope';letter-spacing:-0.03em;border:6px solid #d40000;box-shadow:0 8px 24px rgba(0,0,0,0.6), 0 0 0 2px rgba(255,255,255,0.1);margin-bottom:24px;font-variant-numeric:tabular-nums;}
+.speed-limit.warning{animation:limitWarn 0.6s ease-in-out infinite alternate;}
+@keyframes limitWarn{from{box-shadow:0 8px 24px rgba(0,0,0,0.6), 0 0 0 2px rgba(255,255,255,0.1);}to{box-shadow:0 8px 24px rgba(255,0,0,0.6), 0 0 0 4px rgba(255,59,48,0.5);}}
+
+/* ROUTE CARD */
+.route-card{position:fixed;right:14px;bottom:18px;z-index:10;width:300px;background:var(--panel-strong);backdrop-filter:blur(24px) saturate(160%);-webkit-backdrop-filter:blur(24px) saturate(160%);border:1px solid var(--stroke);border-radius:22px;padding:18px 20px;box-shadow:0 12px 40px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.05);display:none;}
+.route-card.show{display:block;animation:slideIn .4s cubic-bezier(.2,.8,.2,1);}
+@keyframes slideIn{from{opacity:0;transform:translateY(20px);}to{opacity:1;transform:translateY(0);}}
+.route-dest{font:600 13px/1.3 'Manrope';color:var(--text-2);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.route-eta{font:300 38px/1 'Manrope';letter-spacing:-0.03em;color:var(--cyan);font-variant-numeric:tabular-nums;text-shadow:0 0 24px rgba(0,210,223,0.4);}
+.route-eta small{font-size:18px;color:var(--text-2);margin-left:6px;letter-spacing:0;}
+.route-meta{display:flex;gap:18px;margin-top:8px;font:500 13px/1 'Manrope';color:var(--text-2);}
+.route-meta span{display:flex;align-items:center;gap:6px;}
+.route-meta b{color:var(--white);font-weight:600;font-variant-numeric:tabular-nums;}
+.route-actions{display:flex;gap:8px;margin-top:14px;}
+.route-btn{flex:1;height:42px;border:none;border-radius:12px;background:var(--cyan);color:#001218;font:700 13px/1 'Manrope';letter-spacing:0.04em;text-transform:uppercase;cursor:pointer;transition:transform .15s ease, box-shadow .2s ease;box-shadow:0 4px 16px rgba(0,210,223,0.3);}
+.route-btn:active{transform:scale(0.96);}
+.route-btn.secondary{background:rgba(255,255,255,0.06);color:var(--white);box-shadow:none;border:1px solid var(--stroke);}
+.route-btn.icon-only{flex:0 0 42px;padding:0;display:grid;place-items:center;}
+.route-btn.icon-only svg{width:18px;height:18px;}
+
+/* MANEUVER */
+.maneuver{position:fixed;top:80px;left:50%;transform:translateX(-50%);z-index:10;background:var(--panel-strong);backdrop-filter:blur(20px) saturate(150%);-webkit-backdrop-filter:blur(20px) saturate(150%);border:1px solid var(--stroke-strong);border-radius:18px;padding:14px 22px;display:none;align-items:center;gap:16px;box-shadow:0 12px 40px rgba(0,0,0,0.55), 0 0 0 3px rgba(0,210,223,0.08);min-width:280px;max-width:80vw;}
+.maneuver.show{display:flex;animation:slideIn .4s cubic-bezier(.2,.8,.2,1);}
+.maneuver-icon{width:46px;height:46px;border-radius:12px;background:var(--cyan-soft);color:var(--cyan);display:grid;place-items:center;filter:drop-shadow(0 0 12px rgba(0,210,223,0.5));flex-shrink:0;}
+.maneuver-icon svg{width:28px;height:28px;}
+.maneuver-text{display:flex;flex-direction:column;min-width:0;}
+.maneuver-dist{font:600 22px/1 'Manrope';letter-spacing:-0.02em;font-variant-numeric:tabular-nums;}
+.maneuver-street{font:500 12px/1.2 'Manrope';color:var(--text-2);margin-top:4px;text-transform:uppercase;letter-spacing:0.06em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:240px;}
+
+/* LANE GUIDANCE */
+.lanes{position:fixed;top:148px;left:50%;transform:translateX(-50%);z-index:10;display:none;gap:6px;background:var(--panel-strong);backdrop-filter:blur(20px) saturate(150%);-webkit-backdrop-filter:blur(20px) saturate(150%);border:1px solid var(--stroke);border-radius:14px;padding:8px 10px;box-shadow:0 8px 24px rgba(0,0,0,0.5);}
+.lanes.show{display:flex;animation:slideIn .3s ease;}
+.lane{width:32px;height:36px;border-radius:8px;background:rgba(255,255,255,0.04);border:1px solid var(--stroke);display:grid;place-items:center;color:var(--text-3);}
+.lane.valid{color:var(--cyan);background:var(--cyan-soft);border-color:var(--stroke-strong);filter:drop-shadow(0 0 6px rgba(0,210,223,0.4));}
+.lane svg{width:18px;height:18px;}
+
+/* RESULTS */
+.results{position:fixed;top:80px;left:14px;right:14px;z-index:11;background:var(--panel-strong);backdrop-filter:blur(24px) saturate(160%);-webkit-backdrop-filter:blur(24px) saturate(160%);border:1px solid var(--stroke);border-radius:18px;max-height:60vh;overflow-y:auto;display:none;box-shadow:0 16px 48px rgba(0,0,0,0.6);}
+.results.show{display:block;animation:slideIn .25s ease;}
+.result-item{padding:14px 18px;display:flex;align-items:center;gap:14px;border-bottom:1px solid var(--stroke);cursor:pointer;transition:background .15s ease;}
+.result-item:last-child{border-bottom:none;}
+.result-item:hover{background:rgba(255,255,255,0.03);}
+.result-item:active{background:rgba(0,210,223,0.08);}
+.result-pin{width:36px;height:36px;border-radius:10px;background:var(--cyan-soft);color:var(--cyan);display:grid;place-items:center;flex-shrink:0;}
+.result-pin svg{width:18px;height:18px;}
+.result-pin.home{background:rgba(255,179,0,0.15);color:var(--amber);}
+.result-pin.work{background:rgba(91,230,238,0.15);color:var(--cyan-2);}
+.result-pin.fav{background:rgba(255,59,48,0.15);color:#ff6b6b;}
+.result-pin.recent{background:rgba(255,255,255,0.06);color:var(--text-2);}
+.result-text{flex:1;min-width:0;}
+.result-name{font:600 15px/1.2 'Manrope';color:var(--white);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.result-addr{font:400 12px/1.3 'Manrope';color:var(--text-2);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.result-actions{display:flex;gap:4px;flex-shrink:0;}
+.result-act{width:36px;height:36px;border-radius:10px;border:none;background:transparent;color:var(--text-2);cursor:pointer;display:grid;place-items:center;transition:background .15s;}
+.result-act:hover{background:rgba(255,255,255,0.05);color:var(--white);}
+.result-act svg{width:16px;height:16px;}
+.results-section{padding:10px 18px 6px;font:600 11px/1 'Manrope';color:var(--text-3);text-transform:uppercase;letter-spacing:0.12em;background:rgba(0,0,0,0.2);}
+
+/* RECENTER */
+.recenter{position:fixed;right:14px;top:50%;transform:translateY(-50%);z-index:10;width:54px;height:54px;border-radius:18px;background:var(--panel);color:var(--cyan);backdrop-filter:blur(20px) saturate(150%);-webkit-backdrop-filter:blur(20px) saturate(150%);border:1px solid var(--stroke);display:grid;place-items:center;cursor:pointer;box-shadow:0 8px 32px rgba(0,0,0,0.45);transition:transform .15s ease;}
+.recenter:active{transform:translateY(-50%) scale(0.94);}
+.recenter svg{width:24px;height:24px;}
+
+/* SAVE MODAL */
+.modal-bg{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,0.6);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);display:none;align-items:center;justify-content:center;animation:fadeIn .25s ease;}
+.modal-bg.show{display:flex;}
+@keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
+.modal{width:min(92vw,420px);background:var(--bg-deep-2);border:1px solid var(--stroke);border-radius:22px;padding:24px;box-shadow:0 24px 64px rgba(0,0,0,0.7);}
+.modal-title{font:600 20px/1.2 'Manrope';letter-spacing:-0.02em;margin-bottom:6px;}
+.modal-sub{font:400 13px/1.4 'Manrope';color:var(--text-2);margin-bottom:18px;}
+.modal-opts{display:grid;gap:8px;}
+.modal-opt{display:flex;align-items:center;gap:12px;padding:14px 16px;background:rgba(255,255,255,0.03);border:1px solid var(--stroke);border-radius:14px;cursor:pointer;color:var(--white);font:600 15px/1 'Manrope';transition:background .15s, border-color .15s;}
+.modal-opt:hover{background:rgba(0,210,223,0.06);border-color:var(--stroke-strong);}
+.modal-opt:active{transform:scale(0.99);}
+.modal-opt-icon{width:36px;height:36px;border-radius:10px;display:grid;place-items:center;flex-shrink:0;}
+.modal-opt-icon svg{width:18px;height:18px;}
+.modal-opt-icon.home{background:rgba(255,179,0,0.15);color:var(--amber);}
+.modal-opt-icon.work{background:rgba(91,230,238,0.15);color:var(--cyan-2);}
+.modal-opt-icon.fav{background:rgba(255,59,48,0.15);color:#ff6b6b;}
+.modal-cancel{margin-top:12px;width:100%;padding:12px;background:transparent;border:none;color:var(--text-2);font:500 14px/1 'Manrope';cursor:pointer;}
+
+/* SPLASH */
+.splash{position:fixed;inset:0;z-index:100;background:radial-gradient(60% 80% at 50% 50%, var(--bg-deep-2), var(--bg-deep) 80%);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px;transition:opacity .6s ease;}
+.splash.hide{opacity:0;pointer-events:none;}
+.splash-logo{width:96px;height:96px;border-radius:50%;border:2px solid rgba(0,210,223,0.4);display:grid;place-items:center;position:relative;animation:pulse 2.4s ease-in-out infinite;}
+.splash-logo::before{content:"";position:absolute;inset:-12px;border-radius:50%;border:1px solid rgba(0,210,223,0.15);}
+.splash-logo svg{width:48px;height:48px;color:var(--cyan);filter:drop-shadow(0 0 12px rgba(0,210,223,0.6));}
+@keyframes pulse{0%,100%{transform:scale(1);}50%{transform:scale(1.05);}}
+.splash-title{font:200 32px/1 'Manrope';letter-spacing:0.1em;text-transform:uppercase;}
+.splash-title b{font-weight:600;color:var(--cyan);}
+.splash-sub{font:400 13px/1 'Manrope';color:var(--text-2);letter-spacing:0.2em;text-transform:uppercase;}
+
+/* TOAST */
+.toast{position:fixed;top:80px;left:50%;transform:translateX(-50%) translateY(-20px);z-index:50;background:var(--panel-strong);border:1px solid var(--stroke);padding:12px 20px;border-radius:14px;font:500 14px/1 'Manrope';color:var(--white);opacity:0;pointer-events:none;transition:opacity .3s, transform .3s;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);box-shadow:0 8px 32px rgba(0,0,0,0.5);}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+.results::-webkit-scrollbar{width:0;}
+
+/* GPS / CAR marker */
+.car-marker{
+  position:relative;width:70px;height:90px;
+  display:flex;align-items:center;justify-content:center;
+  pointer-events:none;
+}
+.car-aura{
+  position:absolute;inset:8px;border-radius:50%;
+  background:radial-gradient(ellipse 55% 45% at center, rgba(0,210,223,0.32) 0%, transparent 70%);
+  filter:blur(2px);
+}
+.car-pulse{
+  position:absolute;width:48px;height:48px;top:50%;left:50%;
+  transform:translate(-50%,-50%);border-radius:50%;
+  background:radial-gradient(circle, rgba(0,210,223,0.5) 0%, transparent 65%);
+  animation:carPulse 2.6s ease-out infinite;
+}
+@keyframes carPulse{
+  0%  {transform:translate(-50%,-50%) scale(0.5);opacity:1;}
+  100%{transform:translate(-50%,-50%) scale(1.7);opacity:0;}
+}
+.car-icon{
+  position:relative;z-index:2;width:32px;height:72px;
+  filter:drop-shadow(0 6px 10px rgba(0,0,0,0.8));
+}
+
+/* Traffic signal marker */
+.signal-dot{width:10px;height:10px;border-radius:50%;background:#ff6b00;border:1.5px solid #fff;box-shadow:0 0 8px rgba(255,107,0,0.7);}
+
+/* RESPONSIVE - small / narrow head units */
+@media (max-width: 900px), (max-height: 500px){
+  :root{--ring:108px;}
+  .speed-val{font-size:36px;}
+  .speed-limit{width:60px;height:60px;font-size:22px;border-width:5px;margin-bottom:18px;}
+  .route-card{width:260px;padding:14px 16px;}
+  .route-eta{font-size:32px;}
+  .route-eta small{font-size:15px;}
+  .left-rail .rail-btn{width:42px;height:42px;}
+  .left-rail .rail-btn svg{width:20px;height:20px;}
+  .search{height:48px;}
+  .chip-btn{height:48px;min-width:48px;}
+  .status-cluster{height:48px;padding:0 14px;}
+  .maneuver{top:72px;padding:10px 16px;}
+  .maneuver-icon{width:40px;height:40px;}
+  .maneuver-dist{font-size:18px;}
+  .lanes{top:130px;}
+  .lane{width:28px;height:32px;}
+}
+/* Phone portrait — major reflow */
+@media (max-width: 600px){
+  :root{--ring:96px;}
+  .top-bar{gap:8px;}
+  .status-cluster{display:none;} /* phone shows its own status bar */
+  .left-rail{top:auto;bottom:calc(50% - 80px);transform:none;left:10px;}
+  .recenter{right:10px;}
+  .speed-cluster{
+    left:50%;transform:translateX(-50%);
+    bottom:calc(env(safe-area-inset-bottom, 0) + 14px);
+    gap:10px;align-items:center;
+  }
+  .speed-limit{margin-bottom:0;}
+  .route-card{
+    width:auto;left:10px;right:10px;
+    bottom:calc(env(safe-area-inset-bottom, 0) + 150px);
+  }
+  .maneuver{
+    top:74px;left:10px;right:10px;transform:none;min-width:0;max-width:none;
+  }
+  .lanes{top:152px;}
+  .results{top:74px;}
+}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <linearGradient id="speedGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#00D2DF"/>
+      <stop offset="100%" stop-color="#ffffff"/>
+    </linearGradient>
+  </defs>
+</svg>
+
+<!-- SPLASH -->
+<div class="splash" id="splash">
+  <div class="splash-logo">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2 L4 7 L4 17 L12 22 L20 17 L20 7 Z"/><path d="M12 2 L12 22"/><path d="M4 7 L20 17"/><path d="M20 7 L4 17"/></svg>
+  </div>
+  <div class="splash-title">MBUX <b>Navi</b></div>
+  <div class="splash-sub">Инициализация…</div>
+</div>
+
+<!-- MAP -->
+<div id="map"></div>
+<div class="ambient"></div>
+
+<!-- TOP BAR -->
+<div class="top-bar">
+  <div class="search">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+    <input type="text" id="searchInput" placeholder="Накъде?" autocomplete="off">
+  </div>
+  <button class="chip-btn on" id="voiceBtn" title="Глас">
+    <svg id="voiceIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 L6 9 L2 9 L2 15 L6 15 L11 19 Z"/><path d="M15.5 8.5 a5 5 0 0 1 0 7"/><path d="M19 5 a10 10 0 0 1 0 14"/></svg>
+  </button>
+  <div class="status-cluster">
+    <div class="status-bars"><i></i><i></i><i></i><i></i></div>
+    <div class="status-time" id="time">--:--</div>
+  </div>
+</div>
+
+<!-- RESULTS -->
+<div class="results" id="results"></div>
+
+<!-- LEFT RAIL -->
+<div class="left-rail">
+  <button class="rail-btn active" data-panel="map" title="Карта">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3 L3 6 L3 21 L9 18 L15 21 L21 18 L21 3 L15 6 Z"/><path d="M9 3 L9 18"/><path d="M15 6 L15 21"/></svg>
+  </button>
+  <button class="rail-btn" id="homeBtn" title="Дом">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12 L12 3 L21 12"/><path d="M5 10 L5 21 L19 21 L19 10"/></svg>
+  </button>
+  <button class="rail-btn" id="workBtn" title="Работа">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="14" rx="2"/><path d="M8 7 L8 4 L16 4 L16 7"/></svg>
+  </button>
+  <button class="rail-btn" id="favBtn" title="Любими">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 2 3 7h7l-5.5 4.5L18 22l-6-4-6 4 1.5-8.5L2 9h7z"/></svg>
+  </button>
+  <button class="rail-btn" id="recentBtn" title="Скорошни">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7 L12 12 L15 14"/></svg>
+  </button>
+</div>
+
+<!-- RECENTER -->
+<button class="recenter" id="recenterBtn" title="Центрирай">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2 L12 5"/><path d="M12 19 L12 22"/><path d="M2 12 L5 12"/><path d="M19 12 L22 12"/></svg>
+</button>
+
+<!-- MANEUVER -->
+<div class="maneuver" id="maneuver">
+  <div class="maneuver-icon" id="maneuverIcon">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19 L12 5"/><path d="M7 10 L12 5 L17 10"/></svg>
+  </div>
+  <div class="maneuver-text">
+    <div class="maneuver-dist" id="maneuverDist">— м</div>
+    <div class="maneuver-street" id="maneuverStreet">—</div>
+  </div>
+</div>
+
+<!-- LANE GUIDANCE -->
+<div class="lanes" id="lanes"></div>
+
+<!-- SPEED + LIMIT -->
+<div class="speed-cluster">
+  <div class="speed-ring">
+    <svg viewBox="0 0 120 120">
+      <circle class="track" cx="60" cy="60" r="54"/>
+      <circle class="fill" id="speedArc" cx="60" cy="60" r="54"/>
+    </svg>
+    <div class="speed-inner">
+      <div class="speed-val" id="speedVal">0</div>
+      <div class="speed-unit">км/ч</div>
+    </div>
+  </div>
+  <div class="speed-limit" id="speedLimit">50</div>
+</div>
+
+<!-- ROUTE CARD -->
+<div class="route-card" id="routeCard">
+  <div class="route-dest" id="routeDest">—</div>
+  <div class="route-eta"><span id="etaTime">--:--</span></div>
+  <div class="route-meta">
+    <span><b id="etaMin">--</b> мин</span>
+    <span><b id="etaKm">--</b> км</span>
+    <span style="color:var(--cyan)">●</span>
+  </div>
+  <div class="route-actions">
+    <button class="route-btn" id="startBtn">Старт</button>
+    <button class="route-btn icon-only secondary" id="saveBtn" title="Запази">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 2 3 7h7l-5.5 4.5L18 22l-6-4-6 4 1.5-8.5L2 9h7z"/></svg>
+    </button>
+    <button class="route-btn icon-only secondary" id="cancelBtn" title="Отказ">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 L6 18"/><path d="M6 6 L18 18"/></svg>
+    </button>
+  </div>
+</div>
+
+<!-- SAVE MODAL -->
+<div class="modal-bg" id="saveModal">
+  <div class="modal">
+    <div class="modal-title">Запази дестинация</div>
+    <div class="modal-sub" id="modalSub">—</div>
+    <div class="modal-opts">
+      <div class="modal-opt" data-save="home">
+        <div class="modal-opt-icon home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12 L12 3 L21 12"/><path d="M5 10 L5 21 L19 21 L19 10"/></svg></div>
+        Дом
+      </div>
+      <div class="modal-opt" data-save="work">
+        <div class="modal-opt-icon work"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="14" rx="2"/><path d="M8 7 L8 4 L16 4 L16 7"/></svg></div>
+        Работа
+      </div>
+      <div class="modal-opt" data-save="fav">
+        <div class="modal-opt-icon fav"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 2 3 7h7l-5.5 4.5L18 22l-6-4-6 4 1.5-8.5L2 9h7z"/></svg></div>
+        Любимо място
+      </div>
+    </div>
+    <button class="modal-cancel" id="modalCancel">Отказ</button>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script>
+// ============================================================
+// SAFETY NET - never let the splash hang forever
+// ============================================================
+let _bootTimer = setTimeout(()=>{
+  document.getElementById('splash').classList.add('hide');
+  const sub = document.querySelector('.splash-sub');
+  if(sub) sub.textContent = 'Грешка при стартиране';
+  if(typeof maplibregl === 'undefined'){
+    document.body.insertAdjacentHTML('beforeend',
+      `<div style="position:fixed;inset:0;display:grid;place-items:center;padding:24px;text-align:center;background:#050810;color:#fff;font-family:Manrope,sans-serif;z-index:9999">
+        <div style="max-width:380px">
+          <div style="font-size:42px;margin-bottom:12px">🛰️</div>
+          <div style="font-size:18px;font-weight:600;margin-bottom:10px">Картата не може да се зареди</div>
+          <div style="font-size:14px;color:#8B95A7;line-height:1.5">MapLibre библиотеката не успя да се зареди. Това обикновено става когато файлът се отваря в preview / in-app browser. Отвори го в истински <b style="color:#00D2DF">Safari</b> или <b style="color:#00D2DF">Chrome</b>, или го качи на хостинг (напр. netlify.com/drop) и отвори линка.</div>
+        </div>
+      </div>`);
+  }
+}, 8000);
+
+// Global error catcher so script errors are visible
+window.addEventListener('error', (e)=>{
+  const t = document.getElementById('toast');
+  if(t){ t.textContent = 'Грешка: ' + (e.message || 'Script error'); t.classList.add('show'); setTimeout(()=>t.classList.remove('show'), 5000); }
+});
+</script>
+<script>
+// ============================================================
+// MBUX-STYLE NAVIGATION v2
+// ============================================================
+
+// --- Local storage helpers ---
+const LS = {
+  get(k, def=null){ try{ const v=localStorage.getItem(k); return v?JSON.parse(v):def; }catch(e){return def;} },
+  set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} },
+  del(k){ try{ localStorage.removeItem(k); }catch(e){} }
+};
+
+// --- Clock ---
+function tick(){
+  const d=new Date();
+  document.getElementById('time').textContent =
+    String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+}
+tick(); setInterval(tick, 10000);
+
+// --- Toast ---
+let toastTimer;
+function toast(msg, ms=2400){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove('show'), ms);
+}
+
+// ============================================================
+// VOICE (Bulgarian TTS via Web Speech API)
+// ============================================================
+const Voice = {
+  enabled: LS.get('mbux-voice-enabled', true),
+  bgVoice: null,
+  initialized: false,
+  init(){
+    if(!('speechSynthesis' in window)) return;
+    const findBG = () => {
+      const voices = speechSynthesis.getVoices();
+      // Prefer Bulgarian; fallback to a Slavic voice if BG missing
+      this.bgVoice = voices.find(v => /^bg/i.test(v.lang))
+                  || voices.find(v => /^(ru|uk|sr|mk)/i.test(v.lang))
+                  || voices[0];
+      this.initialized = true;
+    };
+    findBG();
+    if(!this.bgVoice && speechSynthesis.onvoiceschanged !== undefined){
+      speechSynthesis.onvoiceschanged = findBG;
+    }
+    this.updateUI();
+  },
+  speak(text){
+    if(!this.enabled || !('speechSynthesis' in window)) return;
+    try {
+      speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = (this.bgVoice && this.bgVoice.lang) || 'bg-BG';
+      if(this.bgVoice) u.voice = this.bgVoice;
+      u.rate = 1.0; u.pitch = 1.0; u.volume = 1.0;
+      speechSynthesis.speak(u);
+    } catch(e){}
+  },
+  toggle(){
+    this.enabled = !this.enabled;
+    LS.set('mbux-voice-enabled', this.enabled);
+    this.updateUI();
+    toast(this.enabled ? 'Глас включен' : 'Глас изключен');
+    if(this.enabled) this.speak('Гласът е включен');
+    else speechSynthesis.cancel();
+  },
+  updateUI(){
+    const btn = document.getElementById('voiceBtn');
+    btn.classList.toggle('on', this.enabled);
+    document.getElementById('voiceIcon').innerHTML = this.enabled
+      ? '<path d="M11 5 L6 9 L2 9 L2 15 L6 15 L11 19 Z"/><path d="M15.5 8.5 a5 5 0 0 1 0 7"/><path d="M19 5 a10 10 0 0 1 0 14"/>'
+      : '<path d="M11 5 L6 9 L2 9 L2 15 L6 15 L11 19 Z"/><path d="M22 9 L16 15"/><path d="M16 9 L22 15"/>';
+  }
+};
+Voice.init();
+document.getElementById('voiceBtn').addEventListener('click', ()=> Voice.toggle());
+
+// ============================================================
+// MAP
+// ============================================================
+const FALLBACK_STYLE = {
+  version: 8,
+  sources: { 'osm': { type:'raster', tiles:['https://tile.openstreetmap.org/{z}/{x}/{y}.png'], tileSize:256 } },
+  layers: [
+    { id:'bg', type:'background', paint:{'background-color':'#050810'} },
+    { id:'osm', type:'raster', source:'osm', paint:{ 'raster-brightness-min':0.05, 'raster-brightness-max':0.45, 'raster-saturation':-0.5, 'raster-contrast':0.25, 'raster-hue-rotate':200 } }
+  ]
+};
+
+if(typeof maplibregl === 'undefined'){
+  // Library failed to load — safety timer will show the error UI
+  throw new Error('MapLibre GL did not load (CDN blocked?)');
+}
+
+const map = new maplibregl.Map({
+  container: 'map',
+  style: 'https://tiles.openfreemap.org/styles/dark',
+  center: [27.9147, 43.2141],
+  zoom: 14.5, pitch: 60, bearing: 0, maxPitch: 78,
+  attributionControl: false, antialias: true, fadeDuration: 200
+});
+
+// Disable accidental two-finger rotation while driving
+map.touchZoomRotate.disableRotation();
+map.dragRotate.disable();
+
+let styleErrored = false;
+map.on('error', (e)=>{
+  if(styleErrored) return;
+  const msg = (e && e.error && e.error.message) || '';
+  if(msg.includes('style') || msg.includes('openfreemap') || msg.includes('Failed to fetch')){
+    styleErrored = true;
+    map.setStyle(FALLBACK_STYLE);
+    toast('Резервен стил');
+  }
+});
+
+let gpsMarker = null;
+let mapReady = false;
+
+map.on('load', ()=>{
+  mapReady = true;
+  if(typeof _bootTimer !== 'undefined') clearTimeout(_bootTimer);
+  setTimeout(()=> document.getElementById('splash').classList.add('hide'), 500);
+
+  // MBUX recoloring
+  try {
+    const layers = map.getStyle().layers || [];
+    layers.forEach(l=>{
+      if(!l.id) return;
+      const id = l.id.toLowerCase();
+      if(l.type==='line' && (id.includes('road')||id.includes('highway')||id.includes('street')||id.includes('motorway')||id.includes('trunk')||id.includes('primary')||id.includes('secondary')||id.includes('tertiary')||id.includes('residential'))){
+        try{ map.setPaintProperty(l.id,'line-color', id.includes('motorway')||id.includes('trunk') ? '#00D2DF' : '#5BE6EE'); }catch(e){}
+        try{ map.setPaintProperty(l.id,'line-opacity', 0.85); }catch(e){}
+      }
+      if(l.type==='fill' && (id.includes('water')||id.includes('ocean')||id.includes('lake'))){
+        try{ map.setPaintProperty(l.id,'fill-color','#03131c'); }catch(e){}
+      }
+      if(l.type==='background'){ try{ map.setPaintProperty(l.id,'background-color','#050810'); }catch(e){} }
+      if(l.type==='fill' && (id.includes('land')||id.includes('earth'))){ try{ map.setPaintProperty(l.id,'fill-color','#070d1a'); }catch(e){} }
+      if(l.type==='fill' && id.includes('building')){
+        try{ map.setPaintProperty(l.id,'fill-color','#0c1530'); }catch(e){}
+        try{ map.setPaintProperty(l.id,'fill-outline-color','#152045'); }catch(e){}
+      }
+      if(l.type==='symbol'){
+        try{ map.setPaintProperty(l.id,'text-color','#9aa6ba'); }catch(e){}
+        try{ map.setPaintProperty(l.id,'text-halo-color','#050810'); }catch(e){}
+        try{ map.setPaintProperty(l.id,'text-halo-width', 1.4); }catch(e){}
+      }
+    });
+  } catch(e){}
+
+  // ============================================================
+  // 3D BUILDINGS, SKY, LIGHTING — the MBUX look
+  // ============================================================
+  add3DScene();
+
+  // GPS / Car marker — top-down Mercedes B-Class inspired
+  const el = document.createElement('div');
+  el.className = 'car-marker';
+  el.innerHTML = `
+    <div class="car-aura"></div>
+    <div class="car-pulse"></div>
+    <svg class="car-icon" viewBox="0 0 26 60" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="bodyG" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stop-color="#1a2030"/>
+          <stop offset="35%" stop-color="#3d4660"/>
+          <stop offset="65%" stop-color="#3d4660"/>
+          <stop offset="100%" stop-color="#1a2030"/>
+        </linearGradient>
+        <linearGradient id="glassG" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stop-color="#0a1525"/>
+          <stop offset="50%" stop-color="#152038"/>
+          <stop offset="100%" stop-color="#0a1525"/>
+        </linearGradient>
+        <radialGradient id="headG" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stop-color="#ffffff"/>
+          <stop offset="40%" stop-color="#00D2DF"/>
+          <stop offset="100%" stop-color="#00D2DF" stop-opacity="0"/>
+        </radialGradient>
+      </defs>
+
+      <!-- ground shadow -->
+      <ellipse cx="13" cy="58" rx="11" ry="2" fill="rgba(0,0,0,0.5)"/>
+
+      <!-- body (rounded hatchback silhouette) -->
+      <path d="M 4,9 Q 4,2.5 9,2 L 17,2 Q 22,2.5 22,9 L 22,52 Q 22,57.5 17,58 L 9,58 Q 4,57.5 4,52 Z"
+            fill="url(#bodyG)" stroke="#05080f" stroke-width="0.4"/>
+
+      <!-- subtle body crease (character line) -->
+      <path d="M 4.5,30 Q 13,29 21.5,30" stroke="#0a0e1a" stroke-width="0.3" fill="none" opacity="0.7"/>
+
+      <!-- side mirrors -->
+      <ellipse cx="2.6" cy="15" rx="1.4" ry="2" fill="#1a2030" stroke="#000" stroke-width="0.2"/>
+      <ellipse cx="23.4" cy="15" rx="1.4" ry="2" fill="#1a2030" stroke="#000" stroke-width="0.2"/>
+
+      <!-- glass cabin -->
+      <path d="M 7,16 Q 7,12.5 10.5,12 L 15.5,12 Q 19,12.5 19,16 L 19,47 Q 19,50.5 15.5,51 L 10.5,51 Q 7,50.5 7,47 Z"
+            fill="url(#glassG)" stroke="#2a3550" stroke-width="0.3"/>
+
+      <!-- windshield highlight (cyan) -->
+      <path d="M 7.5,16 Q 13,13 18.5,16 L 18.5,19 L 7.5,19 Z" fill="#5BE6EE" opacity="0.22"/>
+
+      <!-- B-pillar / roof divider -->
+      <line x1="7" y1="31" x2="19" y2="31" stroke="#2a3550" stroke-width="0.4" opacity="0.8"/>
+
+      <!-- front grille hint -->
+      <rect x="9" y="4.5" width="8" height="1.5" rx="0.5" fill="#0a0e1a"/>
+
+      <!-- front headlights (cyan glow, MBUX style) -->
+      <circle cx="7.5" cy="5.5" r="2.4" fill="url(#headG)" opacity="0.9"/>
+      <circle cx="18.5" cy="5.5" r="2.4" fill="url(#headG)" opacity="0.9"/>
+      <circle cx="7.5" cy="5.5" r="1.1" fill="#ffffff"/>
+      <circle cx="18.5" cy="5.5" r="1.1" fill="#ffffff"/>
+
+      <!-- rear lights (red) -->
+      <rect x="5.5" y="53.5" width="5.5" height="1.6" rx="0.6" fill="#ff2820" opacity="0.85"/>
+      <rect x="15" y="53.5" width="5.5" height="1.6" rx="0.6" fill="#ff2820" opacity="0.85"/>
+
+      <!-- roof apex highlight -->
+      <ellipse cx="13" cy="31" rx="4" ry="14" fill="rgba(255,255,255,0.04)"/>
+    </svg>`;
+  gpsMarker = new maplibregl.Marker({
+    element: el,
+    anchor: 'center',
+    rotationAlignment: 'map',
+    pitchAlignment: 'map'
+  }).setLngLat([27.9147, 43.2141]).addTo(map);
+
+  startGeolocation();
+});
+
+// ============================================================
+// 3D SCENE — buildings, sky, light
+// ============================================================
+function add3DScene(){
+  try {
+    const style = map.getStyle();
+    if(!style || !style.sources) return;
+
+    // Find a vector source containing buildings (OpenMapTiles schema)
+    let vectorSourceName = null;
+    for(const [name, src] of Object.entries(style.sources)){
+      if(src.type === 'vector'){ vectorSourceName = name; break; }
+    }
+
+    // SKY — soft horizon gradient for that immersive depth
+    try {
+      if(!map.getLayer('mbux-sky')){
+        map.addLayer({
+          id:'mbux-sky', type:'sky',
+          paint:{
+            'sky-type':'gradient',
+            'sky-gradient':[
+              'interpolate', ['linear'], ['sky-radial-progress'],
+              0.0, 'rgba(5, 8, 16, 0)',
+              0.5, 'rgba(8, 18, 40, 0.45)',
+              1.0, 'rgba(20, 36, 78, 0.95)'
+            ],
+            'sky-gradient-center':[0, 0],
+            'sky-gradient-radius': 90,
+            'sky-opacity':['interpolate',['linear'],['zoom'], 0, 0, 8, 0.5, 14, 1]
+          }
+        });
+      }
+    } catch(e){ console.warn('sky add failed', e); }
+
+    // LIGHT — gives buildings a soft cyan-tinted shading
+    try {
+      map.setLight({
+        anchor:'viewport',
+        color:'#a8e8ee',
+        intensity:0.45,
+        position:[1.3, 200, 35]
+      });
+    } catch(e){}
+
+    if(!vectorSourceName) return;
+
+    // 3D BUILDINGS (extrusion)
+    const heightExpr = ['coalesce',
+      ['get','render_height'],
+      ['get','height'],
+      ['*',['coalesce',['get','levels'],['get','building:levels'],2], 3]
+    ];
+    const baseExpr = ['coalesce',
+      ['get','render_min_height'],
+      ['get','min_height'],
+      0
+    ];
+
+    if(!map.getLayer('mbux-buildings-3d')){
+      try {
+        map.addLayer({
+          id:'mbux-buildings-3d',
+          type:'fill-extrusion',
+          source: vectorSourceName,
+          'source-layer':'building',
+          minzoom:14,
+          paint:{
+            'fill-extrusion-color':[
+              'interpolate', ['linear'], heightExpr,
+              0,   '#0c1530',
+              15,  '#142048',
+              40,  '#1c2c5c',
+              90,  '#243a78',
+              200, '#2e4a96'
+            ],
+            'fill-extrusion-height':[
+              'interpolate',['linear'],['zoom'],
+              14, 0,
+              14.6, heightExpr
+            ],
+            'fill-extrusion-base': baseExpr,
+            'fill-extrusion-opacity': 0.92,
+            'fill-extrusion-vertical-gradient': true
+          }
+        });
+      } catch(e){
+        // Maybe source-layer name differs — try a few common ones
+        const candidates = ['building','buildings','osm:building'];
+        for(const sl of candidates){
+          try {
+            map.addLayer({
+              id:'mbux-buildings-3d',
+              type:'fill-extrusion',
+              source: vectorSourceName,
+              'source-layer': sl,
+              minzoom:14,
+              paint:{
+                'fill-extrusion-color':'#1a2548',
+                'fill-extrusion-height': heightExpr,
+                'fill-extrusion-base': baseExpr,
+                'fill-extrusion-opacity': 0.9,
+                'fill-extrusion-vertical-gradient': true
+              }
+            });
+            break;
+          } catch(_){}
+        }
+      }
+    }
+
+    // ROOF GLOW — thin layer just above building tops for cyan edge accent
+    try {
+      if(!map.getLayer('mbux-buildings-glow')){
+        map.addLayer({
+          id:'mbux-buildings-glow',
+          type:'fill-extrusion',
+          source: vectorSourceName,
+          'source-layer':'building',
+          minzoom:15,
+          filter: ['>', heightExpr, 12], // only tall-ish buildings glow
+          paint:{
+            'fill-extrusion-color':'#5BE6EE',
+            'fill-extrusion-height':['+', heightExpr, 0.6],
+            'fill-extrusion-base': heightExpr,
+            'fill-extrusion-opacity': 0.35
+          }
+        });
+      }
+    } catch(e){}
+
+  } catch(e){ console.warn('3D scene init failed:', e); }
+}
+
+// ============================================================
+// GEOLOCATION
+// ============================================================
+let userLngLat = null;
+let userHeading = 0;
+let followUser = true;
+let lastSpeed = 0;
+let smoothCamSpeed = 0;
+let demoMode = false;
+
+function startGeolocation(){
+  if(!('geolocation' in navigator)){
+    toast('GPS не е наличен'); startDemo(); return;
+  }
+  try {
+    navigator.geolocation.watchPosition(
+      (pos)=>{
+        try {
+          const { latitude, longitude, speed, heading } = pos.coords;
+          userLngLat = [longitude, latitude];
+          if(gpsMarker) gpsMarker.setLngLat(userLngLat);
+          const kmh = (speed && speed>0) ? Math.round(speed * 3.6) : 0;
+          setSpeed(kmh);
+          if(typeof heading === 'number' && !isNaN(heading)) userHeading = heading;
+          // Rotate car to point in direction of travel
+          if(gpsMarker && typeof userHeading === 'number') gpsMarker.setRotation(userHeading);
+          if(followUser){
+            const cam = getCameraForSpeed(navActive);
+            map.easeTo({
+              center: userLngLat,
+              zoom: cam.zoom,
+              bearing: navActive ? userHeading : 0,
+              pitch: cam.pitch,
+              padding: { top:0, bottom:cam.padBottom, left:0, right:0 },
+              duration: 900
+            });
+          }
+          if(navActive && routeCoords) updateRemaining();
+          maybeWarnSpeed();
+        } catch(inner){ console.warn('GPS handler error:', inner); }
+      },
+      (err)=>{
+        console.warn('Geolocation error:', err);
+        toast('GPS отказан — Demo');
+        startDemo();
+      },
+      { enableHighAccuracy:true, maximumAge:1000, timeout:20000 }
+    );
+  } catch(e){
+    console.warn('watchPosition threw:', e);
+    startDemo();
+  }
+}
+
+function setSpeed(kmh){
+  lastSpeed = kmh;
+  // Smooth speed for camera (less jitter than raw GPS)
+  smoothCamSpeed = smoothCamSpeed * 0.65 + (kmh||0) * 0.35;
+  document.getElementById('speedVal').textContent = kmh;
+  const max = 180, pct = Math.min(kmh/max, 1);
+  const C = 2*Math.PI*54;
+  document.getElementById('speedArc').style.strokeDasharray = C;
+  document.getElementById('speedArc').style.strokeDashoffset = C * (1 - pct);
+}
+
+// ============================================================
+// SPEED-ADAPTIVE CAMERA
+// Stopped -> high birds-eye view
+// Cruising -> mid-tilt
+// Highway -> moderate forward-leaning cinematic view with look-ahead
+// (kept conservative so the road right in front of you stays clearly visible)
+// ============================================================
+function getCameraForSpeed(isNav){
+  const s = Math.max(0, Math.min(smoothCamSpeed, 130));
+  // Saturate around 90 km/h — beyond that we don't keep pushing the camera further
+  const t = Math.min(s / 90, 1);
+  // Eased curve so changes feel natural (not linear)
+  const e = t * t * (3 - 2 * t); // smoothstep
+
+  const baseZoom  = isNav ? 16.8 : 15.7;
+  const peakZoom  = isNav ? 17.4 : 16.5;
+  const baseTilt  = isNav ? 50   : 45;
+  const peakTilt  = isNav ? 64   : 60;
+
+  // Look-ahead padding: keep the immediate road in front of the car visible
+  const maxPad = Math.min((window.innerHeight||500) * 0.20, 120);
+
+  return {
+    zoom: baseZoom + (peakZoom - baseZoom) * e,
+    pitch: baseTilt + (peakTilt - baseTilt) * e,
+    padBottom: e * maxPad
+  };
+}
+
+function maybeWarnSpeed(){
+  const limit = parseInt(document.getElementById('speedLimit').textContent, 10) || 0;
+  const el = document.getElementById('speedLimit');
+  if(limit > 0 && lastSpeed > limit + 10){
+    el.classList.add('warning');
+  } else {
+    el.classList.remove('warning');
+  }
+}
+
+function startDemo(){
+  demoMode = true;
+  let t = 0;
+  const center = [27.9147, 43.2141];
+  setInterval(()=>{
+    t += 0.0004;
+    const prev = userLngLat;
+    userLngLat = [center[0]+t, center[1]+t*0.4];
+    if(gpsMarker) gpsMarker.setLngLat(userLngLat);
+    // Compute heading from movement direction
+    if(prev){
+      const dx = userLngLat[0]-prev[0], dy = userLngLat[1]-prev[1];
+      // bearing in degrees from North, clockwise
+      const bearing = (Math.atan2(dx, dy) * 180/Math.PI + 360) % 360;
+      userHeading = bearing;
+      if(gpsMarker) gpsMarker.setRotation(bearing);
+    }
+    // Simulate a speed that cycles between ~15 and ~125 km/h so the camera reacts visibly
+    const kmh = Math.max(0, Math.round(70 + Math.sin(t*40) * 55));
+    setSpeed(kmh);
+    if(followUser){
+      const cam = getCameraForSpeed(navActive);
+      map.easeTo({
+        center: userLngLat,
+        zoom: cam.zoom,
+        pitch: cam.pitch,
+        padding: { top:0, bottom:cam.padBottom, left:0, right:0 },
+        duration: 900
+      });
+    }
+  }, 1000);
+}
+
+// ============================================================
+// RECENTER
+// ============================================================
+document.getElementById('recenterBtn').addEventListener('click', ()=>{
+  clearTimeout(autoFollowTimer);
+  followUser = true;
+  if(userLngLat){
+    const cam = getCameraForSpeed(navActive);
+    map.easeTo({
+      center: userLngLat,
+      zoom: cam.zoom,
+      pitch: cam.pitch,
+      bearing: navActive ? userHeading : 0,
+      padding: { top:0, bottom:cam.padBottom, left:0, right:0 },
+      duration: 800
+    });
+  }
+});
+// ============================================================
+// AUTO-FOLLOW
+// User pans/zooms manually -> stop following. After idle, re-engage.
+// ============================================================
+let autoFollowTimer = null;
+const AUTO_FOLLOW_MS = 6000;
+
+function autoRecenter(){
+  if(!userLngLat || followUser) return;
+  followUser = true;
+  const cam = getCameraForSpeed(navActive);
+  map.easeTo({
+    center: userLngLat,
+    zoom: cam.zoom,
+    pitch: cam.pitch,
+    bearing: navActive ? userHeading : 0,
+    padding: { top:0, bottom:cam.padBottom, left:0, right:0 },
+    duration: 1400
+  });
+  toast('Авто-следване');
+}
+
+function flagUserInteract(){
+  followUser = false;
+  clearTimeout(autoFollowTimer);
+}
+function scheduleAutoFollow(){
+  clearTimeout(autoFollowTimer);
+  autoFollowTimer = setTimeout(autoRecenter, AUTO_FOLLOW_MS);
+}
+
+map.on('dragstart', flagUserInteract);
+map.on('dragend', scheduleAutoFollow);
+map.on('zoomstart', (e)=>{ if(e.originalEvent) flagUserInteract(); });
+map.on('zoomend',   (e)=>{ if(e.originalEvent) scheduleAutoFollow(); });
+map.on('rotatestart',(e)=>{ if(e.originalEvent) flagUserInteract(); });
+map.on('rotateend', (e)=>{ if(e.originalEvent) scheduleAutoFollow(); });
+map.on('pitchstart',(e)=>{ if(e.originalEvent) flagUserInteract(); });
+map.on('pitchend',  (e)=>{ if(e.originalEvent) scheduleAutoFollow(); });
+
+// ============================================================
+// FAVORITES / RECENT
+// ============================================================
+function getRecent(){ return LS.get('mbux-recent', []); }
+function pushRecent(item){
+  const list = getRecent().filter(x => !(Math.abs(x.lng-item.lng)<1e-4 && Math.abs(x.lat-item.lat)<1e-4));
+  list.unshift(item);
+  LS.set('mbux-recent', list.slice(0, 10));
+}
+function getFavs(){ return LS.get('mbux-favs', []); }
+function addFav(item){
+  const list = getFavs().filter(x => !(Math.abs(x.lng-item.lng)<1e-4 && Math.abs(x.lat-item.lat)<1e-4));
+  list.unshift(item); LS.set('mbux-favs', list.slice(0, 30));
+}
+function getHome(){ return LS.get('mbux-home'); }
+function getWork(){ return LS.get('mbux-work'); }
+
+// ============================================================
+// SEARCH (Nominatim)
+// ============================================================
+const searchInput = document.getElementById('searchInput');
+const resultsEl = document.getElementById('results');
+let searchTimer = null;
+let activeMode = 'search'; // 'search' | 'recent' | 'favs'
+
+searchInput.addEventListener('input', (e)=>{
+  const q = e.target.value.trim();
+  clearTimeout(searchTimer);
+  if(q.length < 2){ resultsEl.classList.remove('show'); return; }
+  activeMode = 'search';
+  searchTimer = setTimeout(()=> doSearch(q), 350);
+});
+
+searchInput.addEventListener('focus', ()=>{
+  if(searchInput.value.trim().length >= 2){
+    activeMode='search';
+    resultsEl.classList.add('show');
+  } else {
+    showQuickPlaces();
+  }
+});
+
+document.addEventListener('click', (e)=>{
+  if(!resultsEl.contains(e.target) && e.target !== searchInput && !e.target.closest('.left-rail')) {
+    resultsEl.classList.remove('show');
+  }
+});
+
+async function doSearch(q){
+  try {
+    const url = new URL('https://nominatim.openstreetmap.org/search');
+    url.searchParams.set('q', q);
+    url.searchParams.set('format', 'json');
+    url.searchParams.set('limit', '6');
+    url.searchParams.set('accept-language', 'bg');
+    if(userLngLat){
+      const [lng, lat] = userLngLat; const d = 1.5;
+      url.searchParams.set('viewbox', `${lng-d},${lat+d},${lng+d},${lat-d}`);
+      url.searchParams.set('bounded', '0');
+    }
+    const r = await fetch(url, { headers:{'Accept':'application/json'} });
+    const data = await r.json();
+    renderSearchResults(data);
+  } catch(err){
+    console.error(err); toast('Грешка при търсене');
+  }
+}
+
+function escapeHTML(s){return (s||'').replace(/[&<>"]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));}
+
+function renderSearchResults(items){
+  if(!items || !items.length){
+    resultsEl.innerHTML = `<div class="result-item"><div class="result-text"><div class="result-name">Няма резултати</div></div></div>`;
+    resultsEl.classList.add('show'); return;
+  }
+  resultsEl.innerHTML = items.map(it=>{
+    const parts = (it.display_name||'').split(',').map(s=>s.trim());
+    const name = parts.slice(0,1).join(', ');
+    const addr = parts.slice(1, 4).join(', ');
+    return `
+      <div class="result-item" data-lat="${it.lat}" data-lon="${it.lon}" data-name="${encodeURIComponent(name)}">
+        <div class="result-pin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s-8-7.58-8-13a8 8 0 0 1 16 0c0 5.42-8 13-8 13z"/><circle cx="12" cy="9" r="3"/></svg></div>
+        <div class="result-text"><div class="result-name">${escapeHTML(name)||'(без име)'}</div><div class="result-addr">${escapeHTML(addr)||''}</div></div>
+      </div>`;
+  }).join('');
+  bindResultClicks();
+  resultsEl.classList.add('show');
+}
+
+function showQuickPlaces(){
+  // Home / Work / Favs / Recent in one list
+  const home = getHome(), work = getWork();
+  const favs = getFavs(); const recent = getRecent();
+  let html = '';
+
+  if(home || work){
+    html += `<div class="results-section">Запазени</div>`;
+    if(home){
+      html += `<div class="result-item" data-lat="${home.lat}" data-lon="${home.lng}" data-name="${encodeURIComponent(home.name||'Дом')}">
+        <div class="result-pin home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12 L12 3 L21 12"/><path d="M5 10 L5 21 L19 21 L19 10"/></svg></div>
+        <div class="result-text"><div class="result-name">Дом</div><div class="result-addr">${escapeHTML(home.name||'')}</div></div>
+      </div>`;
+    }
+    if(work){
+      html += `<div class="result-item" data-lat="${work.lat}" data-lon="${work.lng}" data-name="${encodeURIComponent(work.name||'Работа')}">
+        <div class="result-pin work"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="14" rx="2"/><path d="M8 7 L8 4 L16 4 L16 7"/></svg></div>
+        <div class="result-text"><div class="result-name">Работа</div><div class="result-addr">${escapeHTML(work.name||'')}</div></div>
+      </div>`;
+    }
+  }
+
+  if(favs.length){
+    html += `<div class="results-section">Любими</div>`;
+    favs.forEach((it, i)=>{
+      html += `<div class="result-item" data-lat="${it.lat}" data-lon="${it.lng}" data-name="${encodeURIComponent(it.name||'')}">
+        <div class="result-pin fav"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 2 3 7h7l-5.5 4.5L18 22l-6-4-6 4 1.5-8.5L2 9h7z"/></svg></div>
+        <div class="result-text"><div class="result-name">${escapeHTML(it.name||'')}</div><div class="result-addr">Любимо</div></div>
+        <div class="result-actions"><button class="result-act" data-del-fav="${i}" title="Изтрий"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 L6 18"/><path d="M6 6 L18 18"/></svg></button></div>
+      </div>`;
+    });
+  }
+
+  if(recent.length){
+    html += `<div class="results-section">Скорошни</div>`;
+    recent.forEach((it)=>{
+      html += `<div class="result-item" data-lat="${it.lat}" data-lon="${it.lng}" data-name="${encodeURIComponent(it.name||'')}">
+        <div class="result-pin recent"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7 L12 12 L15 14"/></svg></div>
+        <div class="result-text"><div class="result-name">${escapeHTML(it.name||'')}</div><div class="result-addr">${escapeHTML(it.addr||'')}</div></div>
+      </div>`;
+    });
+  }
+
+  if(!html){
+    html = `<div class="result-item"><div class="result-text"><div class="result-name">Започни да въвеждаш...</div><div class="result-addr">Адрес, място, обект</div></div></div>`;
+  }
+  resultsEl.innerHTML = html;
+  bindResultClicks();
+  resultsEl.classList.add('show');
+}
+
+function bindResultClicks(){
+  resultsEl.querySelectorAll('.result-item').forEach(item=>{
+    item.addEventListener('click', (e)=>{
+      // ignore action button clicks
+      if(e.target.closest('.result-act')) return;
+      const lat = parseFloat(item.dataset.lat);
+      const lon = parseFloat(item.dataset.lon);
+      const name = decodeURIComponent(item.dataset.name||'');
+      if(!isFinite(lat) || !isFinite(lon)) return;
+      pickDestination([lon, lat], name);
+    });
+  });
+  resultsEl.querySelectorAll('[data-del-fav]').forEach(btn=>{
+    btn.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      const i = parseInt(btn.dataset.delFav, 10);
+      const list = getFavs(); list.splice(i, 1); LS.set('mbux-favs', list);
+      showQuickPlaces(); toast('Изтрито');
+    });
+  });
+}
+
+// Left rail quick actions
+document.getElementById('homeBtn').addEventListener('click', ()=>{
+  const home = getHome();
+  if(home) pickDestination([home.lng, home.lat], home.name||'Дом');
+  else { toast('Запази "Дом" първо'); searchInput.focus(); showQuickPlaces(); }
+});
+document.getElementById('workBtn').addEventListener('click', ()=>{
+  const work = getWork();
+  if(work) pickDestination([work.lng, work.lat], work.name||'Работа');
+  else { toast('Запази "Работа" първо'); searchInput.focus(); showQuickPlaces(); }
+});
+document.getElementById('favBtn').addEventListener('click', ()=>{ searchInput.focus(); showQuickPlaces(); });
+document.getElementById('recentBtn').addEventListener('click', ()=>{ searchInput.focus(); showQuickPlaces(); });
+
+// ============================================================
+// ROUTING (OSRM)
+// ============================================================
+let destination = null;
+let destinationName = '';
+let routeCoords = null;
+let routeDistance = 0;
+let routeDuration = 0;
+let routeSteps = [];
+let navActive = false;
+let destMarker = null;
+let currentStepIdx = 0;
+let lastSpokenStepIdx = -1;
+let lastSpokenThreshold = null;
+
+async function pickDestination(lngLat, name){
+  destination = lngLat; destinationName = name || '';
+  searchInput.value = name || '';
+  resultsEl.classList.remove('show');
+
+  if(destMarker) destMarker.remove();
+  const el = document.createElement('div');
+  el.style.cssText = 'width:30px;height:30px;display:grid;place-items:center;';
+  el.innerHTML = `<svg viewBox="0 0 24 24" width="30" height="30" fill="#00D2DF" stroke="#001218" stroke-width="1.2" style="filter:drop-shadow(0 4px 12px rgba(0,210,223,0.6))"><path d="M12 22s-8-7.58-8-13a8 8 0 0 1 16 0c0 5.42-8 13-8 13z"/><circle cx="12" cy="9" r="2.5" fill="#001218"/></svg>`;
+  destMarker = new maplibregl.Marker({ element: el, anchor:'bottom' }).setLngLat(lngLat).addTo(map);
+
+  pushRecent({ lng:lngLat[0], lat:lngLat[1], name, addr:'' });
+
+  if(!userLngLat){ toast('Изчакване на GPS...'); return; }
+  await fetchRoute(userLngLat, lngLat);
+}
+
+async function fetchRoute(from, to){
+  try {
+    const url = `https://router.project-osrm.org/route/v1/driving/${from[0]},${from[1]};${to[0]},${to[1]}?overview=full&geometries=geojson&steps=true&annotations=false`;
+    const r = await fetch(url);
+    const data = await r.json();
+    if(!data.routes || !data.routes.length){ toast('Няма маршрут'); return; }
+    const route = data.routes[0];
+    routeCoords = route.geometry.coordinates;
+    routeDistance = route.distance;
+    routeDuration = route.duration;
+    routeSteps = (route.legs && route.legs[0] && route.legs[0].steps) || [];
+    currentStepIdx = 0; lastSpokenStepIdx = -1; lastSpokenThreshold = null;
+    spokenAnnouncements = new Set();
+
+    drawRoute(routeCoords);
+    showRouteCard();
+    fitRoute(routeCoords);
+    fetchTrafficSignals(routeCoords);
+  } catch(err){
+    console.error(err); toast('Грешка при маршрута');
+  }
+}
+
+function drawRoute(coords){
+  const data = { type:'Feature', geometry:{ type:'LineString', coordinates: coords } };
+  if(map.getSource('route')){ map.getSource('route').setData(data); return; }
+  map.addSource('route', { type:'geojson', data });
+  map.addLayer({ id:'route-glow', type:'line', source:'route', layout:{'line-cap':'round','line-join':'round'}, paint:{'line-color':'#00D2DF','line-width':18,'line-opacity':0.18,'line-blur':6} });
+  map.addLayer({ id:'route-line', type:'line', source:'route', layout:{'line-cap':'round','line-join':'round'}, paint:{'line-color':'#00D2DF','line-width':7,'line-opacity':0.95} });
+  map.addLayer({ id:'route-core', type:'line', source:'route', layout:{'line-cap':'round','line-join':'round'}, paint:{'line-color':'#ffffff','line-width':2,'line-opacity':0.45} });
+}
+
+function clearRoute(){
+  ['route-core','route-line','route-glow'].forEach(id=>{ if(map.getLayer(id)) map.removeLayer(id); });
+  if(map.getSource('route')) map.removeSource('route');
+  // Clear signals
+  if(map.getLayer('signals')) map.removeLayer('signals');
+  if(map.getSource('signals')) map.removeSource('signals');
+  routeCoords = null; routeSteps = [];
+}
+
+function fitRoute(coords){
+  const bounds = coords.reduce((b,c)=> b.extend(c), new maplibregl.LngLatBounds(coords[0], coords[0]));
+  map.fitBounds(bounds, { padding:{ top:160, left:120, right:340, bottom:200 }, duration:1000, pitch:55 });
+  followUser = false;
+}
+
+function showRouteCard(){
+  const card = document.getElementById('routeCard');
+  card.classList.add('show');
+  document.getElementById('routeDest').textContent = destinationName || 'Дестинация';
+  const km = (routeDistance/1000);
+  const min = Math.round(routeDuration/60);
+  document.getElementById('etaKm').textContent = km < 10 ? km.toFixed(1) : Math.round(km);
+  document.getElementById('etaMin').textContent = min;
+  const arrival = new Date(Date.now() + routeDuration*1000);
+  document.getElementById('etaTime').textContent =
+    String(arrival.getHours()).padStart(2,'0')+':'+String(arrival.getMinutes()).padStart(2,'0');
+}
+
+function updateRemaining(){
+  if(!routeCoords || !userLngLat) return;
+
+  // Find closest route point to user
+  let best = { d: Infinity, idx: 0 };
+  for(let i=0; i<routeCoords.length; i++){
+    const d = haversine(userLngLat, routeCoords[i]);
+    if(d < best.d){ best.d = d; best.idx = i; }
+  }
+  let remaining = 0;
+  for(let i=best.idx; i<routeCoords.length-1; i++){
+    remaining += haversine(routeCoords[i], routeCoords[i+1]);
+  }
+  const ratio = remaining / routeDistance;
+  const remSec = routeDuration * ratio;
+  document.getElementById('etaKm').textContent = (remaining/1000) < 10 ? (remaining/1000).toFixed(1) : Math.round(remaining/1000);
+  document.getElementById('etaMin').textContent = Math.max(0, Math.round(remSec/60));
+  const arrival = new Date(Date.now() + remSec*1000);
+  document.getElementById('etaTime').textContent =
+    String(arrival.getHours()).padStart(2,'0')+':'+String(arrival.getMinutes()).padStart(2,'0');
+
+  // Update current step
+  if(routeSteps.length){
+    // pick next step (where maneuver location is still ahead)
+    let nextIdx = routeSteps.length - 1;
+    for(let i=currentStepIdx; i<routeSteps.length; i++){
+      const s = routeSteps[i];
+      if(!s.geometry || !s.geometry.coordinates || !s.geometry.coordinates.length) continue;
+      const maneuverPoint = s.maneuver && s.maneuver.location ? s.maneuver.location : s.geometry.coordinates[0];
+      const d = haversine(userLngLat, maneuverPoint);
+      if(d > 25){ nextIdx = i; break; }
+      else { currentStepIdx = i + 1; }
+    }
+    const step = routeSteps[nextIdx];
+    if(step){
+      const maneuverPoint = step.maneuver && step.maneuver.location ? step.maneuver.location : step.geometry.coordinates[0];
+      const d = haversine(userLngLat, maneuverPoint);
+      document.getElementById('maneuverDist').textContent = d > 1000 ? (d/1000).toFixed(1)+' км' : Math.round(d/10)*10+' м';
+      document.getElementById('maneuverStreet').textContent = maneuverLabel(step);
+      document.getElementById('maneuverIcon').innerHTML = maneuverIcon(step.maneuver);
+
+      updateLaneGuidance(step);
+      maybeAnnounce(step, d, nextIdx);
+    }
+  }
+
+  // Arrival
+  if(remaining < 40){
+    if(navActive){
+      navActive = false;
+      Voice.speak('Пристигнахте в крайната точка');
+      document.getElementById('maneuver').classList.remove('show');
+      document.getElementById('lanes').classList.remove('show');
+      toast('Пристигнахте');
+    }
+  }
+}
+
+// ============================================================
+// VOICE ANNOUNCEMENTS
+// ============================================================
+const DIR_BG = {
+  'left':'наляво', 'right':'надясно',
+  'slight left':'леко наляво', 'slight right':'леко надясно',
+  'sharp left':'рязко наляво', 'sharp right':'рязко надясно',
+  'straight':'направо', 'uturn':'обратно'
+};
+const ORDINAL_BG = {1:'първия',2:'втория',3:'третия',4:'четвъртия',5:'петия',6:'шестия',7:'седмия',8:'осмия',9:'деветия'};
+
+function speakManeuver(step){
+  const m = step.maneuver || {};
+  const mod = (m.modifier || 'straight').toLowerCase();
+  const type = (m.type || '').toLowerCase();
+  const street = step.name || '';
+  const dir = DIR_BG[mod] || 'направо';
+
+  let phrase = '';
+  let addStreet = true;
+
+  switch(type){
+    case 'depart':
+      phrase = 'тръгнете' + (street ? ' по ' + street : '');
+      addStreet = false;
+      break;
+    case 'arrive':
+      phrase = 'пристигнахте в крайната точка';
+      addStreet = false;
+      break;
+    case 'turn':
+      phrase = mod === 'uturn' ? 'завийте обратно' : 'завийте ' + dir;
+      break;
+    case 'continue':
+      phrase = (mod === 'straight' || !mod) ? 'продължете направо' : 'продължете ' + dir;
+      break;
+    case 'merge':
+      phrase = 'влейте се ' + (dir === 'наляво' ? 'отляво' : dir === 'надясно' ? 'отдясно' : 'в потока');
+      break;
+    case 'on ramp':
+      phrase = 'вземете рампата ' + (mod && mod !== 'straight' ? dir : 'напред');
+      break;
+    case 'off ramp':
+      phrase = 'излезте по рампата ' + (mod && mod !== 'straight' ? dir : 'напред');
+      break;
+    case 'fork':
+      phrase = (mod === 'straight' || !mod) ? 'на разклонението продължете направо' : 'на разклонението дръжте ' + dir;
+      break;
+    case 'end of road':
+      phrase = mod === 'uturn' ? 'в края на пътя завийте обратно' : 'в края на пътя завийте ' + dir;
+      break;
+    case 'roundabout':
+    case 'rotary':
+      if(m.exit) phrase = `на кръговото излезте на ${ORDINAL_BG[m.exit] || (m.exit+'-и')} изход`;
+      else phrase = 'влезте в кръговото';
+      addStreet = false;
+      break;
+    case 'roundabout turn':
+      phrase = 'на кръговото завийте ' + dir;
+      addStreet = false;
+      break;
+    case 'exit roundabout':
+    case 'exit rotary':
+      phrase = 'излезте от кръговото';
+      addStreet = false;
+      break;
+    case 'new name':
+    case 'notification':
+      return ''; // skip — usually just road name change
+    default:
+      // Fallback: trust modifier
+      if(mod === 'straight' || !mod) phrase = 'продължете направо';
+      else if(mod === 'uturn') phrase = 'завийте обратно';
+      else phrase = 'завийте ' + dir;
+  }
+
+  if(phrase && street && addStreet) phrase += ' по ' + street;
+  return phrase;
+}
+
+// Tracks which announcement thresholds have been spoken (per step)
+let spokenAnnouncements = new Set();
+
+function maybeAnnounce(step, distance, stepIdx){
+  if(!Voice.enabled || !navActive) return;
+  const phrase = speakManeuver(step);
+  if(!phrase) return;
+
+  // On first observation of this step, mark thresholds we're already past as "spoken"
+  // so we don't announce "in 700 meters" when we're at 400 meters from it.
+  const initKey = stepIdx + '@init';
+  if(!spokenAnnouncements.has(initKey)){
+    spokenAnnouncements.add(initKey);
+    if(distance < 650) spokenAnnouncements.add(stepIdx + '@700');
+    if(distance < 220) spokenAnnouncements.add(stepIdx + '@250');
+  }
+
+  const thresholds = [
+    { m: 700, prefix: 'След 700 метра ' },
+    { m: 250, prefix: 'След 250 метра ' },
+    { m: 70,  prefix: '' }
+  ];
+
+  for(const t of thresholds){
+    const key = stepIdx + '@' + t.m;
+    if(distance < t.m && !spokenAnnouncements.has(key)){
+      spokenAnnouncements.add(key);
+      const text = t.prefix
+        ? t.prefix + phrase
+        : phrase.charAt(0).toUpperCase() + phrase.slice(1);
+      Voice.speak(text);
+      return;
+    }
+  }
+}
+
+// ============================================================
+// MANEUVER LABEL — friendly Bulgarian text for the maneuver bubble
+// ============================================================
+function maneuverLabel(step){
+  if(step && step.name) return step.name.toUpperCase();
+  const t = (step && step.maneuver && step.maneuver.type) || '';
+  const mod = (step && step.maneuver && step.maneuver.modifier) || '';
+  const dirUp = (DIR_BG[mod] || '').toUpperCase();
+  const lookup = {
+    'depart': 'НАЧАЛО НА МАРШРУТА',
+    'arrive': 'КРАЙНА ТОЧКА',
+    'turn': dirUp ? 'ЗАВОЙ ' + dirUp : 'ЗАВОЙ',
+    'continue': 'ПРОДЪЛЖИ НАПРАВО',
+    'merge': 'ВЛИВАНЕ',
+    'on ramp': 'ВХОДЯЩА РАМПА',
+    'off ramp': 'ИЗХОД',
+    'fork': dirUp ? 'РАЗКЛОНЕНИЕ ' + dirUp : 'РАЗКЛОНЕНИЕ',
+    'end of road': 'КРАЙ НА ПЪТЯ',
+    'roundabout': 'КРЪГОВО',
+    'rotary': 'КРЪГОВО',
+    'roundabout turn': 'КРЪГОВО',
+    'new name': 'ПРОДЪЛЖИ',
+    'notification': 'ПРОДЪЛЖИ'
+  };
+  return lookup[t] || 'ПРОДЪЛЖИ';
+}
+
+// ============================================================
+// MANEUVER ICONS
+// ============================================================
+function maneuverIcon(m){
+  if(!m) return arrowIcon('straight');
+  const mod = (m.modifier||'').toLowerCase();
+  const type = (m.type||'').toLowerCase();
+  if(type==='arrive') return arrowIcon('arrive');
+  if(type==='roundabout' || type==='rotary') return arrowIcon('roundabout');
+  if(mod.includes('uturn')) return arrowIcon('uturn');
+  if(mod.includes('sharp left')) return arrowIcon('sharpleft');
+  if(mod.includes('sharp right')) return arrowIcon('sharpright');
+  if(mod.includes('slight left')) return arrowIcon('slightleft');
+  if(mod.includes('slight right')) return arrowIcon('slightright');
+  if(mod.includes('left')) return arrowIcon('left');
+  if(mod.includes('right')) return arrowIcon('right');
+  return arrowIcon('straight');
+}
+function arrowIcon(kind){
+  const base = (path)=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">${path}</svg>`;
+  switch(kind){
+    case 'left':       return base('<path d="M19 12 L5 12"/><path d="M10 7 L5 12 L10 17"/>');
+    case 'right':      return base('<path d="M5 12 L19 12"/><path d="M14 7 L19 12 L14 17"/>');
+    case 'slightleft': return base('<path d="M18 18 L8 8"/><path d="M8 14 L8 8 L14 8"/>');
+    case 'slightright':return base('<path d="M6 18 L16 8"/><path d="M10 8 L16 8 L16 14"/>');
+    case 'sharpleft':  return base('<path d="M18 18 L6 6"/><path d="M6 12 L6 6 L12 6"/>');
+    case 'sharpright': return base('<path d="M6 18 L18 6"/><path d="M12 6 L18 6 L18 12"/>');
+    case 'uturn':      return base('<path d="M8 20 L8 9 a5 5 0 0 1 10 0 L18 20"/><path d="M4 16 L8 20 L12 16"/>');
+    case 'roundabout': return base('<circle cx="12" cy="12" r="5"/><path d="M12 19 L12 14"/><path d="M9 22 L12 19 L15 22"/>');
+    case 'arrive':     return base('<circle cx="12" cy="12" r="9"/><path d="M9 12 L11 14 L15 10"/>');
+    default:           return base('<path d="M12 19 L12 5"/><path d="M7 10 L12 5 L17 10"/>');
+  }
+}
+
+// ============================================================
+// LANE GUIDANCE (OSRM step.intersections[].lanes)
+// ============================================================
+function updateLaneGuidance(step){
+  const lanes = document.getElementById('lanes');
+  if(!step || !step.intersections || !step.intersections.length){ lanes.classList.remove('show'); return; }
+  // Find the first intersection in the step that has lanes
+  const inter = step.intersections.find(x => x.lanes && x.lanes.length);
+  if(!inter){ lanes.classList.remove('show'); return; }
+
+  const arr = inter.lanes.map(l=>{
+    const indications = l.indications || [];
+    const valid = !!l.valid;
+    return { indications, valid };
+  });
+  lanes.innerHTML = arr.map(l=>{
+    const ind = l.indications[0] || 'straight';
+    return `<div class="lane ${l.valid?'valid':''}">${laneArrow(ind)}</div>`;
+  }).join('');
+  lanes.classList.add('show');
+}
+function laneArrow(ind){
+  const i = (ind||'').toLowerCase();
+  if(i.includes('left') && i.includes('straight')) return arrowIcon('slightleft');
+  if(i.includes('right') && i.includes('straight')) return arrowIcon('slightright');
+  if(i==='left' || i==='sharp left') return arrowIcon('left');
+  if(i==='right' || i==='sharp right') return arrowIcon('right');
+  if(i==='slight left') return arrowIcon('slightleft');
+  if(i==='slight right') return arrowIcon('slightright');
+  if(i==='uturn') return arrowIcon('uturn');
+  return arrowIcon('straight');
+}
+
+// ============================================================
+// TRAFFIC SIGNALS (OSM Overpass along route)
+// ============================================================
+async function fetchTrafficSignals(coords){
+  try {
+    // Bounding box of route, slightly padded
+    let minLng=Infinity, minLat=Infinity, maxLng=-Infinity, maxLat=-Infinity;
+    for(const c of coords){ if(c[0]<minLng)minLng=c[0]; if(c[0]>maxLng)maxLng=c[0]; if(c[1]<minLat)minLat=c[1]; if(c[1]>maxLat)maxLat=c[1]; }
+    // pad ~50m
+    const padLat=0.0006, padLng=0.0008;
+    const bbox = `${minLat-padLat},${minLng-padLng},${maxLat+padLat},${maxLng+padLng}`;
+    if((maxLat-minLat)*(maxLng-minLng) > 0.25){
+      // Too large area, skip to avoid heavy Overpass call
+      return;
+    }
+    const q = `[out:json][timeout:10];node["highway"="traffic_signals"](${bbox});out;`;
+    const r = await fetch('https://overpass-api.de/api/interpreter', {
+      method:'POST', body: 'data='+encodeURIComponent(q),
+      headers: {'Content-Type':'application/x-www-form-urlencoded'}
+    });
+    if(!r.ok) return;
+    const data = await r.json();
+    if(!data.elements) return;
+
+    // Filter to signals near the route (within ~30m)
+    const features = [];
+    data.elements.forEach(n=>{
+      if(typeof n.lat!=='number' || typeof n.lon!=='number') return;
+      const p = [n.lon, n.lat];
+      // distance to nearest route point
+      let dMin = Infinity;
+      for(let i=0;i<coords.length;i+=3){
+        const d = haversine(p, coords[i]);
+        if(d < dMin) dMin = d;
+      }
+      if(dMin < 35) features.push({ type:'Feature', geometry:{type:'Point', coordinates:p}, properties:{} });
+    });
+
+    const geojson = { type:'FeatureCollection', features };
+    if(map.getSource('signals')){
+      map.getSource('signals').setData(geojson);
+    } else {
+      map.addSource('signals', { type:'geojson', data: geojson });
+      map.addLayer({
+        id:'signals', type:'circle', source:'signals',
+        paint:{
+          'circle-radius': ['interpolate',['linear'],['zoom'], 12, 2, 16, 5, 18, 8],
+          'circle-color':'#ff6b00',
+          'circle-stroke-color':'#fff',
+          'circle-stroke-width':1.2,
+          'circle-opacity':0.95
+        }
+      });
+    }
+  } catch(e){ console.warn('signals fetch failed', e); }
+}
+
+// ============================================================
+// HAVERSINE
+// ============================================================
+function haversine(a, b){
+  const toRad = x => x*Math.PI/180;
+  const R = 6371000;
+  const dLat = toRad(b[1]-a[1]);
+  const dLng = toRad(b[0]-a[0]);
+  const lat1 = toRad(a[1]), lat2 = toRad(b[1]);
+  const x = Math.sin(dLat/2)**2 + Math.sin(dLng/2)**2 * Math.cos(lat1)*Math.cos(lat2);
+  return 2*R*Math.asin(Math.sqrt(x));
+}
+
+// ============================================================
+// START / CANCEL / SAVE
+// ============================================================
+document.getElementById('startBtn').addEventListener('click', ()=>{
+  if(!routeCoords) return;
+  navActive = true; followUser = true;
+  document.getElementById('maneuver').classList.add('show');
+  if(userLngLat){
+    const cam = getCameraForSpeed(true);
+    map.easeTo({ center:userLngLat, zoom:cam.zoom, pitch:cam.pitch, bearing:userHeading||0, padding:{top:0, bottom:cam.padBottom, left:0, right:0}, duration:1000 });
+  }
+  document.getElementById('startBtn').textContent = 'В навигация…';
+  document.getElementById('startBtn').disabled = true;
+  Voice.speak('Започвам навигация');
+  toast('Навигацията започна');
+});
+
+document.getElementById('cancelBtn').addEventListener('click', ()=>{
+  navActive = false;
+  document.getElementById('routeCard').classList.remove('show');
+  document.getElementById('maneuver').classList.remove('show');
+  document.getElementById('lanes').classList.remove('show');
+  document.getElementById('startBtn').textContent = 'Старт';
+  document.getElementById('startBtn').disabled = false;
+  if(destMarker){ destMarker.remove(); destMarker = null; }
+  clearRoute(); searchInput.value = '';
+  if(speechSynthesis) speechSynthesis.cancel();
+});
+
+// SAVE
+document.getElementById('saveBtn').addEventListener('click', ()=>{
+  if(!destination) return;
+  document.getElementById('modalSub').textContent = destinationName || '—';
+  document.getElementById('saveModal').classList.add('show');
+});
+document.getElementById('modalCancel').addEventListener('click', ()=> document.getElementById('saveModal').classList.remove('show'));
+document.getElementById('saveModal').addEventListener('click', (e)=>{
+  if(e.target.id === 'saveModal') document.getElementById('saveModal').classList.remove('show');
+});
+document.querySelectorAll('.modal-opt').forEach(opt=>{
+  opt.addEventListener('click', ()=>{
+    const kind = opt.dataset.save;
+    if(!destination) return;
+    const item = { lng:destination[0], lat:destination[1], name:destinationName||'' };
+    if(kind==='home'){ LS.set('mbux-home', item); toast('Запазено като Дом'); }
+    else if(kind==='work'){ LS.set('mbux-work', item); toast('Запазено като Работа'); }
+    else if(kind==='fav'){ addFav(item); toast('Добавено в любими'); }
+    document.getElementById('saveModal').classList.remove('show');
+  });
+});
+
+</script>
+</body>
+</html>
